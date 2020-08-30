@@ -65,6 +65,12 @@ plot(cma0,
 # The X axis represents a 2 year follow up window
 # The Y axis represents the two patients (patient 89 and patient 11) and their medication history
 
+# We can see in patient 89 that they consistently finished their medication supply before obtaining their next supply. However, they had an interruption
+# of over 100 days between the first and second supply of medA.
+# We can see in patient 11 that the patient would acquire new supply of medication before the previous supply was used. As shown in the second and third supply 
+# of medA and the first and second supply of medB. We can also see that this patient had a interruption of more than 200 days between the first and second supply
+# and an interruption of more than 250 days between the third and fourth supply of medA.
+
 
   
   
