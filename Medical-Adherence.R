@@ -41,10 +41,31 @@ patient.11.89 <- data %>%
   filter(PATIENT_ID == "11" | PATIENT_ID == "89")
 
 # We will utilize the AdhereR package and the functions included to analyze patient 11 and patient 89
+# Visualize the patient records for both patient 11 and patient 89
+# We will use the CMA0 (zero), to have the general overview of the medication events.
+cma0 <- CMA0(data = patient.11.89,
+             ID.colname = "PATIENT_ID",
+             event.date.colname = "DATE",
+             event.duration.colname = "DURATION",
+             event.daily.dose.colname = "PERDAY",
+             medication.class.colname = "CATEGORY",
+             followup.window.start = 0,
+             observation.window.start = 182, #Observation window starts roughly 6 months after the start of treatment
+             observation.window.duration = 365, # Observation window will be a year long from the start of the observation window as set in the above argument
+             date.format = "%m/%d/%Y")
 
-  
-  
-  
+plot(cma0,
+     print.dose = TRUE, plot.dose = TRUE,
+     align.all.patients = TRUE,
+     show.legend = FALSE)  
+# The green dashed box shows the follow up window
+# The yellow-tan filled box between 180-540 is the observation window (of 1 year)
+# The red arrow signifies the duration of the medA and the number below it represents the daily dosage of medA.
+# The blue arrow signifies the duration of the medB and the number below it represents the daily dosage of medB.
+# The X axis represents a 2 year follow up window
+# The Y axis represents the two patients (patient 89 and patient 11) and their medication history
+
+
   
   
 
