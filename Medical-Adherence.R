@@ -16,7 +16,13 @@ data <- as_tibble(medical_adherence_data) # hypothetical data set for medical ad
 # We can look at the frequency and see the likelihood of a patient to take both medications (MedA and MedB), if the bar chart is of
 # equal frequency, we can assume equal use.
 ggplot(data = data, mapping = aes(x = CATEGORY)) +
-  geom_bar()
+  geom_bar(aes(fill = CATEGORY)) +
+  labs(x = "Medication Type", 
+       y = "Count",
+       title = "Frequency of Medication Type",
+       caption = "Source: https://cran.r-project.org/web/packages/AdhereR") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
 # It shows that the medication between medA and medB are relatively equal with medA having slightly more use.
 
 #sum of each medication medA and medB.
@@ -72,18 +78,48 @@ plot(cma0,
 # and an interruption of more than 250 days between the third and fourth supply of medA.
 
 
-  
-  
+#After analyzing the CMA0, we are under the assumption that the adherence (quality of implementation) is at question
+# We will run further CMAs to deduce the quality out of 100%.
+# We will use CMA6 
+cma6 <- CMA6(data=patient.11.89, # we're estimating CMA6 now!
+             ID.colname="PATIENT_ID",
+             event.date.colname="DATE",
+             event.duration.colname="DURATION",
+             event.daily.dose.colname="PERDAY",
+             medication.class.colname="CATEGORY",
+             carry.only.for.same.medication=FALSE,
+             consider.dosage.change=FALSE,
+             followup.window.start=0, observation.window.start=250, 
+             observation.window.duration=365,
+             date.format="%m/%d/%Y");
+plot(cma6,patients.to.plot=c("11"), show.legend=FALSE) #23.9% Adherence
+plot(cma6,patients.to.plot=c("89"), show.legend=FALSE) #45.2% Adherence
+# Based on the CMA6 taking to account for the first and last medical event, the medical adherence for patient 11 is 23.9%
+# and for patient 89 is 45.2%.
+# The reason for the low percentage of adherence is due to the large gaps between each medication event.
 
+# Did not consider using CMAs 1-4 due to major limitation of not taking timing of events to account
+# CMA5 ignores the last event of the OW as does CMA1
+# CMA7 accounts for gap between start of OW and first medication event. However, our OW does not have that issue. It is predicted that both CMAs should result in smilar adherence
+# CMA8 Is for involving ongoing treatment. Our plot does not have that issue
+# CMA9 is for longitudinal studies which ours is not.
+# Therefore, CMA6 is the best choice for our adherence check.
 
+cma7 <- CMA7(data=patient.11.89, # we're estimating CMA7 now!
+             ID.colname="PATIENT_ID",
+             event.date.colname="DATE",
+             event.duration.colname="DURATION",
+             event.daily.dose.colname="PERDAY",
+             medication.class.colname="CATEGORY",
+             carry.only.for.same.medication=FALSE,
+             consider.dosage.change=FALSE,
+             followup.window.start=0, observation.window.start=250, 
+             observation.window.duration=365,
+             date.format="%m/%d/%Y");
+plot(cma7, patients.to.plot=c("11"), show.legend=FALSE) #23%
+plot(cma7, patients.to.plot=c("89"), show.legend=FALSE) #43.8
 
-
-
-
-
-
-
-
+# As shown above, since our OW does not have a gap between the start of the OW and first medication event, our adherence % is roughly identical
 
 
 
