@@ -1,0 +1,225 @@
+---
+title: "AdhereR - Medication Adherence"
+author: "Kevin Tran"
+date: "9/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls()) #removes all variables stored previously in Environment (good habit to include)
+
+library(AdhereR) #Run R package for medical adherence analysis
+library(tidyverse) #Run tidyverse, if you do not have: install.packages("tidyverse")
+library(lubridate) #to modify date-time entries, if you do not have it: install.packages("lubridate")
+library(readxl) #allows to read in excel documents as a data set
+
+#read the data set into RStudio and stored into object
+medical_adherence_data <- read_excel("medical.adherence.data.xlsx")
+
+data <- as_tibble(medical_adherence_data) # hypothetical data set for medical adherence as a tibble to use with tidyverse.
+```
+
+## Abstract
+
+This analysis deals with exploring medication adherence from the hypothetical dataset included in the AdhereR package in RStudio. The exploration of medication adherence begins with ensuring that both medication A (medA) and medication B (medB) were required to be taken by each patient. Once confirmed, we will narrow our focus onto two patients and dive into a general overview of the medication events per patient. We will analyze their adherence which will be represented as a percentage. The data represented in this analysis can be found on <https://cran.r-project.org/web/packages/AdhereR/vignettes/AdhereR-overview.html> as well as definition to the terminology used within this analysis.
+
+
+## Medication A and Medication B required for every patient?
+```{r}
+ggplot(data = data, mapping = aes(x = CATEGORY)) +
+  geom_bar(aes(fill = CATEGORY)) +
+  labs(x = "Medication Type", 
+       y = "Count",
+       title = "Frequency of Medication Type",
+       caption = "Source: https://cran.r-project.org/web/packages/AdhereR") +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+```
+
+```{r}
+medication_count <- data %>%
+  group_by(CATEGORY) %>%
+  summarise(count = n())
+
+knitr::kable(medication_count, caption = "Total Count for Medication A and Medication B")
+```
+As plotted above, we can see that the frequency of patients who take Medication A (549 medication events) is relatively equal to those who take Medication B (531 medication events). Therefore, we can assume that either half of the patients take just medication A and the other half takes medication B or that every patient takes both medication A and medication B.
+
+The latter is proven to be true as shown below:
+```{r}
+medicationA_taken <- data %>%
+  filter(CATEGORY == "medA")
+unique(medicationA_taken$PATIENT_ID)
+  
+medicationB_taken <- data %>%
+  filter(CATEGORY == "medB")
+unique(medicationB_taken$PATIENT_ID)
+```
+As shown above, every patient (1-100) has taken both medication throughout their entire Follow Up Window (start to finish of their prescribed duration)
+
+
+## Medication Adherence of Patient 11 and Patient 89
+
+Now that we have confirmed that every patient was taking medication A and medication B, we can analyze the medication adherence for patient 11 and patient 89 while taking both medications.
+
+We will first filter our data to show the medication events for only patient 11 and patient 89:
+```{r}
+patient.11.89 <- data %>%
+  filter(PATIENT_ID == "11" | PATIENT_ID == "89")
+
+knitr::kable(patient.11.89, caption = "The Medication Events for Patient 11 and Patient 89")
+```
+
+Below is the general overview/visualization of the above data:
+```{r}
+cma0 <- CMA0(data = patient.11.89,
+             ID.colname = "PATIENT_ID",
+             event.date.colname = "DATE",
+             event.duration.colname = "DURATION",
+             event.daily.dose.colname = "PERDAY",
+             medication.class.colname = "CATEGORY",
+             followup.window.start = 0,
+             observation.window.start = 182, #Observation window starts roughly 6 months after the start of treatment
+             observation.window.duration = 365, # Observation window will be a year long from the start of the observation window as set in the above argument
+             date.format = "%m/%d/%Y")
+plot(cma0,
+     print.dose = TRUE, plot.dose = TRUE,
+     align.all.patients = TRUE,
+     show.legend = FALSE)  
+```
+
+* The green dashed box shows the follow up window
+
+* The yellow-tan filled box between 180-540 is the observation window (of 1 year)
+
+* The red arrow signifies the duration of the medA and the number below it represents the daily dosage of medA.
+
+* The blue arrow signifies the duration of the medB and the number below it represents the daily dosage of medB.
+
+* The X axis represents a 2 year follow up window
+
+* The Y axis represents the two patients (patient 89 and patient 11) and their medication history
+
+We can see in patient 89 that they consistently finished their medication supply before obtaining their next supply. However, they had an interruption of over 100 days between the first and second supply of medA.
+
+We can see in patient 11 that the patient would acquire new supply of medication before the previous supply was used. As shown in the second and third supply of medA and the first and second supply of medB.We can also see that this patient had a interruption of more than 200 days between the first and second supply and an interruption of more than 250 days between the third and fourth supply of medA.
+
+## Medication Adherence Calculations
+Now we will calculate the medication adherence for each patient within a specified observation window.
+
+The medication adherence is calculated by taking the total prescribed duration of a medication episode divided by the total duration of the observation window times 100.
+
+If there are large gaps between the prescribed medication end date and the date of resupply, the adherence percentage will decrease.
+
+```{r}
+cma6 <- CMA6(data=patient.11.89, # we're estimating CMA6 now!
+             ID.colname="PATIENT_ID",
+             event.date.colname="DATE",
+             event.duration.colname="DURATION",
+             event.daily.dose.colname="PERDAY",
+             medication.class.colname="CATEGORY",
+             carry.only.for.same.medication=FALSE, # Carry over should always happen irrespective of what medication is supplied
+             consider.dosage.change=FALSE,
+             followup.window.start=0, observation.window.start=250, 
+             observation.window.duration=365,
+             date.format="%m/%d/%Y");
+plot(cma6,patients.to.plot=c("11"), show.legend=FALSE) #23.9% Adherence
+plot(cma6,patients.to.plot=c("89"), show.legend=FALSE) #45.2% Adherence
+
+getCMA(cma6)
+```
+
+Based on the CMA6 taking to account for the first and last medical event, the medical adherence for patient 11 is 23.9% and for patient 89 is 45.2%. The reason for the low percentage of adherence is due to the large gaps between each medication event as stated above.
+
+Within the package there are 9 simple CMAs that we can use to estimate the adherence within an observation window. Below are the reasons we did not consider CMAs 1-5 and 7-9.
+* CMAs 1-4 were not considered due to major limitation of not taking timing of events to account
+
+* CMA5 ignores the last event of the OW as does CMA1
+
+* CMA7 accounts for gap between start of OW and first medication event. However, our OW does not have that issue. It is predicted that both CMAs should result in similar adherence scores
+
+* CMA8 is used for involving ongoing treatment. Our plot does not have that issue
+
+* CMA9 is for longitudinal studies which ours is not.
+
+Therefore, CMA6 is the best choice for our adherence check.
+
+# CMA Estimates per Medication Episode
+
+Instead of calculating an estimate for adherence within a specified observation window. We can calculate the CMA estimation of adherence for each medication episode specified by either a gap larger than 6 months or a change in medication.
+
+```{r}
+cmaE <- CMA_per_episode(CMA="CMA6", # apply the simple CMA7 to each treatment episode
+                        data=patient.11.89,
+                        ID.colname="PATIENT_ID",
+                        event.date.colname="DATE",
+                        event.duration.colname="DURATION",
+                        event.daily.dose.colname="PERDAY",
+                        medication.class.colname="CATEGORY",
+                        carryover.within.obs.window = TRUE,
+                        carry.only.for.same.medication = FALSE,
+                        consider.dosage.change = FALSE, # conditions on treatment episodes
+                        medication.change.means.new.treatment.episode = TRUE,
+                        maximum.permissible.gap = 180,
+                        maximum.permissible.gap.unit = "days",
+                        followup.window.start=0,
+                        followup.window.start.unit = "days",
+                        followup.window.duration = 365 * 2,
+                        followup.window.duration.unit = "days",
+                        observation.window.start=0,
+                        observation.window.start.unit = "days",
+                        observation.window.duration=365*2,
+                        observation.window.duration.unit = "days",
+                        date.format="%m/%d/%Y",
+                        parallel.backend="none",
+                        parallel.threads=1)
+cmaE$CMA #To get summary results for each patient
+plot(cmaE, patients.to.plot=c("11"), show.legend=FALSE) #all 100%
+plot(cmaE, patients.to.plot=c("89"), show.legend=FALSE) #100, 53, 38
+```
+
+Since the permissible gap (determining when the next treatment episode is) is 6 months, each gap between each treatment is at least 6 months long or a transition between MedA to medB (vice versa).
+The reason why our permissible gap is 6 months is because of an assumption: minimum of 6 months needs to pass after the end of a medication supply (taken as prescribed) to be reasonably confident that the patient has discontinued treatment
+
+As shown above, each medication episode over the total duration of the follow up window was given an adherence score.
+
+# CMA Estimates - Sliding Window
+
+```{r}
+cmaW <- CMA_sliding_window(CMA.to.apply="CMA6", # apply the simple CMA6 to each sliding window
+                           data=patient.11.89,
+                           ID.colname="PATIENT_ID",
+                           event.date.colname="DATE",
+                           event.duration.colname="DURATION",
+                           event.daily.dose.colname="PERDAY",
+                           medication.class.colname="CATEGORY",
+                           carry.only.for.same.medication=FALSE,
+                           consider.dosage.change=FALSE,
+                           followup.window.start=0,
+                           observation.window.start=0,
+                           observation.window.duration=365*2,
+                           sliding.window.start=0, # sliding windows definition
+                           sliding.window.start.unit="days",
+                           sliding.window.duration=120,
+                           sliding.window.duration.unit="days",
+                           sliding.window.step.duration=30, # Can change the stacking of the CMA estimations with this number!
+                           sliding.window.step.unit="days",
+                           date.format="%m/%d/%Y",
+                           parallel.backend="none",
+                           parallel.threads=1)
+cmaW$CMA
+
+plot(cmaW, patients.to.plot=c("11"), show.legend=FALSE)
+plot(cmaW, patients.to.plot=c("89"), show.legend=FALSE)
+```
+
+Sliding windows are good to estimate the variation of adherence during a medication episode. 
+As shown in each patient, we set the step duration to 30, which allows for a CMA estimation to be calculated every month for a 4 month duration.
+
+We can see that the adherence and quality of implementation swings from25% to 100% in patient 11 and 27% to 100% in patient 89 throughout the entire follow up window.
+
+Both CMA per episode and CMA sliding windows are necessary to understand adherence within patients.
+
+
+
+
