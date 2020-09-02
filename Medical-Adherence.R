@@ -87,7 +87,7 @@ cma6 <- CMA6(data=patient.11.89, # we're estimating CMA6 now!
              event.duration.colname="DURATION",
              event.daily.dose.colname="PERDAY",
              medication.class.colname="CATEGORY",
-             carry.only.for.same.medication=FALSE,
+             carry.only.for.same.medication=FALSE, # Carry over should always happen irrespective of what medication is supplied
              consider.dosage.change=FALSE,
              followup.window.start=0, observation.window.start=250, 
              observation.window.duration=365,
@@ -121,8 +121,78 @@ plot(cma7, patients.to.plot=c("89"), show.legend=FALSE) #43.8
 
 # As shown above, since our OW does not have a gap between the start of the OW and first medication event, our adherence % is roughly identical
 
+cma9 <- CMA9(data=patient.11.89, # we're estimating CMA9 now!
+             ID.colname="PATIENT_ID",
+             event.date.colname="DATE",
+             event.duration.colname="DURATION",
+             event.daily.dose.colname="PERDAY",
+             medication.class.colname="CATEGORY",
+             carry.only.for.same.medication=FALSE,
+             consider.dosage.change=FALSE,
+             followup.window.start=0, observation.window.start=250, 
+             observation.window.duration=365,
+             date.format="%m/%d/%Y");
+plot(cma9, patients.to.plot=c("11"), show.legend=FALSE) #18.8%
+plot(cma9, patients.to.plot=c("89"), show.legend=FALSE) #38.3%
 
+cmaE <- CMA_per_episode(CMA="CMA6", # apply the simple CMA9 to each treatment episode
+                        data=patient.11.89,
+                        ID.colname="PATIENT_ID",
+                        event.date.colname="DATE",
+                        event.duration.colname="DURATION",
+                        event.daily.dose.colname="PERDAY",
+                        medication.class.colname="CATEGORY",
+                        carryover.within.obs.window = TRUE,
+                        carry.only.for.same.medication = FALSE,
+                        consider.dosage.change = FALSE, # conditions on treatment episodes
+                        medication.change.means.new.treatment.episode = TRUE,
+                        maximum.permissible.gap = 180,
+                        maximum.permissible.gap.unit = "days",
+                        followup.window.start=0,
+                        followup.window.start.unit = "days",
+                        followup.window.duration = 365 * 2,
+                        followup.window.duration.unit = "days",
+                        observation.window.start=0,
+                        observation.window.start.unit = "days",
+                        observation.window.duration=365*2,
+                        observation.window.duration.unit = "days",
+                        date.format="%m/%d/%Y",
+                        parallel.backend="none",
+                        parallel.threads=1)
+cmaE$CMA #To get summary results for each patient
+plot(cmaE, patients.to.plot=c("11"), show.legend=FALSE)
+plot(cmaE, patients.to.plot=c("89"), show.legend=FALSE)
+# Since the permissible gap (determining when the next treatment episode is) is 6 months, each gap between each treatment is at least 6 months long or a transition between MedA and medB
+# An assumption: minimum of 6 months needs to pass after the end of a medication supply (taken as prescribed) to be reasonably confident that the pt has discontinued tx
 
+cmaW <- CMA_sliding_window(CMA.to.apply="CMA6", # apply the simple CMA9 to each sliding window
+                           data=patient.11.89,
+                           ID.colname="PATIENT_ID",
+                           event.date.colname="DATE",
+                           event.duration.colname="DURATION",
+                           event.daily.dose.colname="PERDAY",
+                           medication.class.colname="CATEGORY",
+                           carry.only.for.same.medication=FALSE,
+                           consider.dosage.change=FALSE,
+                           followup.window.start=0,
+                           observation.window.start=0,
+                           observation.window.duration=365*2,
+                           sliding.window.start=0, # sliding windows definition
+                           sliding.window.start.unit="days",
+                           sliding.window.duration=120,
+                           sliding.window.duration.unit="days",
+                           sliding.window.step.duration=30, # Can change the stacking of the CMA estimations with this number!
+                           sliding.window.step.unit="days",
+                           date.format="%m/%d/%Y",
+                           parallel.backend="none",
+                           parallel.threads=1)
+cmaW$CMA
 
+plot(cmaW, patients.to.plot=c("11"), show.legend=FALSE)
+plot(cmaW, patients.to.plot=c("89"), show.legend=FALSE)
+# Sliding windows are good to estimate the variation of adherence during a medication episode. 
+# As shown in each patient, we set the step duration to 30, which allows for a CMA estimation to be calculated every month for a 4 month duration.
+# We can see that the adherence and quality of implementation swings from 27% to 100% throughout the follow up window.
+# Both CMA per episode and CMA sliding windows are necessary to understand adherence per patient.
 
 
