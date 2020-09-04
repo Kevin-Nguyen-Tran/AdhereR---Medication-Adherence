@@ -5,7 +5,6 @@ rm(list = ls()) #removes all variables stored previously in Environment (good ha
 library(AdhereR) #Run R package for medical adherence analysis
 library(tidyverse) #Run tidyverse, if you do not have: install.packages("tidyverse")
 library(lubridate) #to modify date-time entries, if you do not have it: install.packages("lubridate")
-library(scales) #allows to modify scientific notation for values
 library(readxl) #allows to read in excel documents as a data set
 
 #read the data set into RStudio and stored into object
@@ -94,6 +93,8 @@ cma6 <- CMA6(data=patient.11.89, # we're estimating CMA6 now!
              date.format="%m/%d/%Y");
 plot(cma6,patients.to.plot=c("11"), show.legend=FALSE) #23.9% Adherence
 plot(cma6,patients.to.plot=c("89"), show.legend=FALSE) #45.2% Adherence
+
+getCMA(cma6)
 # Based on the CMA6 taking to account for the first and last medical event, the medical adherence for patient 11 is 23.9%
 # and for patient 89 is 45.2%.
 # The reason for the low percentage of adherence is due to the large gaps between each medication event.
@@ -135,7 +136,7 @@ cma9 <- CMA9(data=patient.11.89, # we're estimating CMA9 now!
 plot(cma9, patients.to.plot=c("11"), show.legend=FALSE) #18.8%
 plot(cma9, patients.to.plot=c("89"), show.legend=FALSE) #38.3%
 
-cmaE <- CMA_per_episode(CMA="CMA6", # apply the simple CMA9 to each treatment episode
+cmaE <- CMA_per_episode(CMA="CMA7", # apply the simple CMA7 to each treatment episode
                         data=patient.11.89,
                         ID.colname="PATIENT_ID",
                         event.date.colname="DATE",
@@ -160,12 +161,12 @@ cmaE <- CMA_per_episode(CMA="CMA6", # apply the simple CMA9 to each treatment ep
                         parallel.backend="none",
                         parallel.threads=1)
 cmaE$CMA #To get summary results for each patient
-plot(cmaE, patients.to.plot=c("11"), show.legend=FALSE)
-plot(cmaE, patients.to.plot=c("89"), show.legend=FALSE)
+plot(cmaE, patients.to.plot=c("11"), show.legend=FALSE) #all 100%
+plot(cmaE, patients.to.plot=c("89"), show.legend=FALSE) #100, 53, 38
 # Since the permissible gap (determining when the next treatment episode is) is 6 months, each gap between each treatment is at least 6 months long or a transition between MedA and medB
 # An assumption: minimum of 6 months needs to pass after the end of a medication supply (taken as prescribed) to be reasonably confident that the pt has discontinued tx
 
-cmaW <- CMA_sliding_window(CMA.to.apply="CMA6", # apply the simple CMA9 to each sliding window
+cmaW <- CMA_sliding_window(CMA.to.apply="CMA6", # apply the simple CMA6 to each sliding window
                            data=patient.11.89,
                            ID.colname="PATIENT_ID",
                            event.date.colname="DATE",
